@@ -28,8 +28,7 @@ local espEnabled = false
 local infiniteJumpEnabled = false
 local infiniteJumpConnection
 local invisibleEnabled = false
-local invisibleLoopConnection = nil
-local invisibleCharConnection = nil
+local invisibleParts = {}
 local cameraNoclipEnabled = false
 local cameraNoclipConnection
 local infiniteCameraEnabled = false
@@ -39,6 +38,8 @@ local noFogEnabled = false
 local highlightEnabled = false
 local backgroundImageId = nil
 local backgroundFrame = nil
+
+local InvisibleConfig = { Transparency = 0.7 }
 
 local function notify(title, content, duration)
     Rayfield:Notify({Title = title, Content = content, Duration = duration or 2, Image = 4483362458})
@@ -87,58 +88,63 @@ local function removeBackground()
     notify("Sucesso", "Background removido!", 2)
 end
 
-local function makeInvisible(char)
-    if not char then return end
-    task.wait(0.3)
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.Transparency = 1; part.CastShadow = false end
-        if part:IsA("Decal") or part:IsA("Texture") then part.Transparency = 1 end
-        if part:IsA("Accessory") and part:FindFirstChild("Handle") then part.Handle.Transparency = 1; part.Handle.CastShadow = false end
+-- ============================================
+-- INVISIBLE - NUCLEARBOBO 5.0
+-- ============================================
+local function setupInvisibleParts()
+    invisibleParts = {}
+    if player.Character then
+        for _, obj in pairs(player.Character:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                table.insert(invisibleParts, obj)
+            end
+        end
+        if invisibleEnabled then
+            for _, part in pairs(invisibleParts) do
+                part.Transparency = InvisibleConfig.Transparency
+            end
+        end
     end
-    local head = char:FindFirstChild("Head")
-    if head then for _, child in pairs(head:GetChildren()) do if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then child.Enabled = false end end end
-    for _, child in pairs(char:GetChildren()) do if child:IsA("ParticleEmitter") or child:IsA("Trail") or child:IsA("Beam") or child:IsA("Sparkles") then child.Enabled = false end end
-    local hum = char:FindFirstChild("Humanoid")
-    if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None; hum.NameOcclusion = Enum.NameOcclusion.NoOcclusion end
 end
 
 local function enableInvisible()
     invisibleEnabled = true
-    if player.Character then makeInvisible(player.Character) end
-    invisibleCharConnection = player.CharacterAdded:Connect(function(char) if invisibleEnabled then makeInvisible(char) end end)
-    invisibleLoopConnection = RunService.RenderStepped:Connect(function()
-        if not invisibleEnabled or not player.Character then return end
-        local char = player.Character
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then if part.Transparency < 1 then part.Transparency = 1 end; if part.CastShadow then part.CastShadow = false end end
-            if part:IsA("Accessory") and part:FindFirstChild("Handle") then if part.Handle.Transparency < 1 then part.Handle.Transparency = 1 end end
+    setupInvisibleParts()
+    for _, part in pairs(invisibleParts) do
+        if part:IsA("BasePart") then
+            part.Transparency = InvisibleConfig.Transparency
         end
-        local head = char:FindFirstChild("Head")
-        if head then for _, child in pairs(head:GetChildren()) do if (child:IsA("BillboardGui") or child:IsA("SurfaceGui")) and child.Enabled then child.Enabled = false end end end
-        local hum = char:FindFirstChild("Humanoid")
-        if hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
-    end)
-    notify("Invisivel", "Ativado! NINGUEM te ve", 3)
+    end
+    notify("Invisivel", "Ativado! Ninguem te ve", 2)
 end
 
 local function disableInvisible()
     invisibleEnabled = false
-    if invisibleLoopConnection then invisibleLoopConnection:Disconnect(); invisibleLoopConnection = nil end
-    if invisibleCharConnection then invisibleCharConnection:Disconnect(); invisibleCharConnection = nil end
-    if player.Character then
-        local char = player.Character
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then part.Transparency = 0; part.CastShadow = true end
-            if part:IsA("Decal") or part:IsA("Texture") then part.Transparency = 0 end
-            if part:IsA("Accessory") and part:FindFirstChild("Handle") then part.Handle.Transparency = 0 end
+    for _, part in pairs(invisibleParts) do
+        if part:IsA("BasePart") then
+            part.Transparency = 0
         end
-        local head = char:FindFirstChild("Head")
-        if head then for _, child in pairs(head:GetChildren()) do if child:IsA("BillboardGui") or child:IsA("SurfaceGui") then child.Enabled = true end end end
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer; hum.NameOcclusion = Enum.NameOcclusion.OccludeAll end
     end
+    invisibleParts = {}
     notify("Invisivel", "Desativado!", 2)
 end
+
+setupInvisibleParts()
+
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.3)
+    if flying then stopFly() end
+    if noclipEnabled then task.wait(0.1); enableNoclip() end
+    if backgroundImageId then task.wait(0.5); changeBackground(backgroundImageId) end
+    setupInvisibleParts()
+    if invisibleEnabled then
+        for _, part in pairs(invisibleParts) do
+            if part:IsA("BasePart") then
+                part.Transparency = InvisibleConfig.Transparency
+            end
+        end
+    end
+end)
 
 local function enableCameraNoclip()
     cameraNoclipEnabled = true
@@ -271,42 +277,29 @@ local function disableNoFog()
     notify("NoFog", "Desativado!", 2)
 end
 
--- FUNÇÃO FLY USANDO O SCRIPT OFUSCADO
 local function startFly()
     local hum = getHumanoid()
-    if not hum then
-        notify("Erro", "Humanoid nao encontrado!", 2)
-        return false
-    end
-    
+    if not hum then notify("Erro", "Humanoid nao encontrado!", 2) return false end
     flying = true
-    
-    -- Executar o script de fly ofuscado
     pcall(function()
         loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
     end)
-    
     notify("Voo", "Ativado! Script de fly carregado", 2)
     return true
 end
 
 local function stopFly()
     flying = false
-    
-    -- Tentar limpar o fly ofuscado (remover BodyVelocity/BodyGyro)
     local hum = getHumanoid()
     if hum then
         hum.AutoRotate = true
         if hum.Parent and hum.Parent:FindFirstChild("HumanoidRootPart") then
             local r = hum.Parent.HumanoidRootPart
             for _, child in pairs(r:GetChildren()) do
-                if child:IsA("BodyVelocity") or child:IsA("BodyGyro") then
-                    child:Destroy()
-                end
+                if child:IsA("BodyVelocity") or child:IsA("BodyGyro") then child:Destroy() end
             end
         end
     end
-    
     notify("Voo", "Desativado!", 2)
 end
 
@@ -423,12 +416,6 @@ local function disableESP()
     notify("ESP", "Desativado!", 2)
 end
 
-player.CharacterAdded:Connect(function(char)
-    if flying then stopFly() end
-    if noclipEnabled then task.wait(0.1); enableNoclip() end
-    if backgroundImageId then task.wait(0.5); changeBackground(backgroundImageId) end
-end)
-
 local MainTab = Window:CreateTab("Principal", 4483362458)
 MainTab:CreateSlider({Name = "Velocidade", Range = {16, 200}, Increment = 1, Suffix = "studs/s", CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
 MainTab:CreateSlider({Name = "Pulo", Range = {50, 300}, Increment = 1, Suffix = "power", CurrentValue = 50, Flag = "JumpPower", Callback = function(v) local h = getHumanoid() if h then h.JumpPower = v; h.UseJumpPower = true end end})
@@ -461,7 +448,7 @@ local ESPTab = Window:CreateTab("ESP", 4483362458)
 ESPTab:CreateToggle({Name = "ESP", CurrentValue = false, Callback = function(v) if v then enableESP() else disableESP() end end})
 
 local VisualTab = Window:CreateTab("Visual", 4483362458)
-VisualTab:CreateToggle({Name = "Invisivel", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
+VisualTab:CreateToggle({Name = "Invisivel (NUCLEARBOBO)", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
 VisualTab:CreateToggle({Name = "Highlight Jogadores", CurrentValue = false, Callback = function(v)
     highlightEnabled = v
     if v then
