@@ -1,5 +1,13 @@
-local Linity = loadstring(game:HttpGet("https://raw.githubusercontent.com/IlIlIlIlIlIlIlIlIlIlIlIlIlIlIlIl/Linity/main/Main.lua"))()
-local Window = Linity:CreateWindow({Name = "🔥 Nameless Admin", Subtitle = "por CriadorYan", Theme = "Dark", Icon = "rbxassetid://4483345998", LoadingTitle = "Nameless Admin", LoadingSubtitle = "Carregando...", ConfigurationSaving = {Enabled = false}})
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "🔥 Nameless Admin",
+    LoadingTitle = "Nameless Admin",
+    LoadingSubtitle = "por CriadorYan",
+    ConfigurationSaving = {Enabled = false},
+    Discord = {Enabled = false},
+    KeySystem = false,
+})
 
 local player = game.Players.LocalPlayer
 local lighting = game:GetService("Lighting")
@@ -7,7 +15,6 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local flying = false
-local flightConnection
 local flySpeed = 50
 local noclipEnabled = false
 local noclipConnection
@@ -34,7 +41,7 @@ local backgroundImageId = nil
 local backgroundFrame = nil
 
 local function notify(title, content, duration)
-    pcall(function() Linity:Notify({Title = title, Content = content, Duration = duration or 3, Type = "default"}) end)
+    Rayfield:Notify({Title = title, Content = content, Duration = duration or 2, Image = 4483362458})
 end
 
 local function getHumanoid()
@@ -43,7 +50,7 @@ local function getHumanoid()
 end
 
 local function changeBackground(imageId)
-    if not imageId or imageId == "" then notify("Erro", "Link da imagem invalido!") return end
+    if not imageId or imageId == "" then notify("Erro", "Link invalido!") return end
     if backgroundFrame then backgroundFrame:Destroy(); backgroundFrame = nil end
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "NamelessBackground"
@@ -111,7 +118,7 @@ local function enableInvisible()
         local hum = char:FindFirstChild("Humanoid")
         if hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
     end)
-    notify("Sucesso", "Invisibilidade ativada! NINGUEM te ve", 3)
+    notify("Invisivel", "Ativado! NINGUEM te ve", 3)
 end
 
 local function disableInvisible()
@@ -130,7 +137,7 @@ local function disableInvisible()
         local hum = char:FindFirstChild("Humanoid")
         if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer; hum.NameOcclusion = Enum.NameOcclusion.OccludeAll end
     end
-    notify("Sucesso", "Visibilidade restaurada!", 2)
+    notify("Invisivel", "Desativado!", 2)
 end
 
 local function enableCameraNoclip()
@@ -147,7 +154,7 @@ local function enableCameraNoclip()
             camera.CFrame = camera.CFrame:Lerp(newCFrame, 0.1)
         end
     end)
-    notify("Sucesso", "Camera atravessa paredes!", 3)
+    notify("Camera Noclip", "Ativado! Atravessa paredes", 3)
 end
 
 local function disableCameraNoclip()
@@ -155,7 +162,7 @@ local function disableCameraNoclip()
     if cameraNoclipConnection then cameraNoclipConnection:Disconnect(); cameraNoclipConnection = nil end
     workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
     player.CameraMinZoomDistance = 0.5; player.CameraMaxZoomDistance = 20
-    notify("Sucesso", "Camera restaurada!", 2)
+    notify("Camera Noclip", "Desativado!", 2)
 end
 
 local function enableInfiniteCamera()
@@ -166,14 +173,14 @@ local function enableInfiniteCamera()
         if player.CameraMaxZoomDistance < 999999 then player.CameraMaxZoomDistance = 999999 end
         if player.CameraMinZoomDistance > 0.1 then player.CameraMinZoomDistance = 0.1 end
     end)
-    notify("Sucesso", "Zoom infinito ativado!", 3)
+    notify("Zoom Infinito", "Ativado!", 3)
 end
 
 local function disableInfiniteCamera()
     infiniteCameraEnabled = false
     if infiniteCameraConnection then infiniteCameraConnection:Disconnect(); infiniteCameraConnection = nil end
     player.CameraMinZoomDistance = 0.5; player.CameraMaxZoomDistance = 20
-    notify("Sucesso", "Zoom restaurado!", 2)
+    notify("Zoom Infinito", "Desativado!", 2)
 end
 
 local function enableFling()
@@ -208,13 +215,13 @@ local function enableFling()
         end
     end
     flingConnection = RunService.Heartbeat:Connect(flingPlayers)
-    notify("Sucesso", "Fling TURBINADO ativado! Alcance: 50 studs", 3)
+    notify("Fling TURBINADO", "Ativado! Alcance: 50 studs", 3)
 end
 
 local function disableFling()
     flingEnabled = false
     if flingConnection then flingConnection:Disconnect(); flingConnection = nil end
-    notify("Sucesso", "Fling desativado!", 2)
+    notify("Fling", "Desativado!", 2)
 end
 
 local function destroyHub()
@@ -233,71 +240,74 @@ local function destroyHub()
     if backgroundFrame then removeBackground() end
     pcall(function() Window:Destroy() end)
     local playerGui = player:FindFirstChild("PlayerGui")
-    if playerGui then for _, gui in pairs(playerGui:GetChildren()) do if gui.Name:find("Linity") or gui.Name == "NamelessBackground" then gui:Destroy() end end end
-    notify("Sucesso", "Nameless Admin removido!", 2)
+    if playerGui then for _, gui in pairs(playerGui:GetChildren()) do if gui.Name:find("Rayfield") or gui.Name:find("sirius") or gui.Name == "NamelessBackground" then gui:Destroy() end end end
+    notify("Hub Destruido", "Nameless Admin removido!", 2)
 end
 
 local function enableFullbright()
     fullbrightEnabled = true
     lighting.Brightness = 3; lighting.ClockTime = 14; lighting.FogEnd = 100000; lighting.GlobalShadows = false
     lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255); lighting.Ambient = Color3.fromRGB(255, 255, 255)
-    notify("Sucesso", "Fullbright ativado!", 2)
+    notify("Fullbright", "Ativado!", 2)
 end
 
 local function disableFullbright()
     fullbrightEnabled = false
     lighting.Brightness = 2; lighting.GlobalShadows = true
     lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127); lighting.Ambient = Color3.fromRGB(127, 127, 127)
-    notify("Sucesso", "Fullbright desativado!", 2)
+    notify("Fullbright", "Desativado!", 2)
 end
 
 local function enableNoFog()
     noFogEnabled = true
     lighting.FogEnd = 1000000; lighting.FogStart = 1000000
     if lighting:FindFirstChild("Atmosphere") then lighting.Atmosphere:Destroy() end
-    notify("Sucesso", "NoFog ativado!", 2)
+    notify("NoFog", "Ativado!", 2)
 end
 
 local function disableNoFog()
     noFogEnabled = false
     lighting.FogEnd = 10000; lighting.FogStart = 0
-    notify("Sucesso", "NoFog desativado!", 2)
+    notify("NoFog", "Desativado!", 2)
 end
 
+-- FUNÇÃO FLY USANDO O SCRIPT OFUSCADO
 local function startFly()
     local hum = getHumanoid()
-    if not hum then return false end
-    flying = true; hum.PlatformStand = false; hum.AutoRotate = false
-    local camera = workspace.CurrentCamera; local rootPart = hum.Parent:WaitForChild("HumanoidRootPart")
-    local bodyGyro = Instance.new("BodyGyro"); bodyGyro.P = 9e4; bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9); bodyGyro.CFrame = camera.CFrame; bodyGyro.Parent = rootPart
-    local bodyVelocity = Instance.new("BodyVelocity"); bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9); bodyVelocity.Velocity = Vector3.new(0, 0, 0); bodyVelocity.Parent = rootPart
-    flightConnection = RunService.RenderStepped:Connect(function()
-        if not flying or not hum.Parent or not rootPart then return end
-        local cf = camera.CFrame; local hDir = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z).Unit
-        bodyGyro.CFrame = hDir.Magnitude > 0 and CFrame.new(rootPart.Position, rootPart.Position + hDir) or bodyGyro.CFrame
-        local mv = hum.MoveDirection
-        if mv.Magnitude == 0 then bodyVelocity.Velocity = Vector3.new(0,0,0); return end
-        local vel = Vector3.new()
-        if mv.Z > 0 then vel += cf.LookVector * flySpeed elseif mv.Z < 0 then vel -= cf.LookVector * flySpeed end
-        if mv.X > 0 then vel += cf.RightVector * flySpeed elseif mv.X < 0 then vel -= cf.RightVector * flySpeed end
-        bodyVelocity.Velocity = vel
+    if not hum then
+        notify("Erro", "Humanoid nao encontrado!", 2)
+        return false
+    end
+    
+    flying = true
+    
+    -- Executar o script de fly ofuscado
+    pcall(function()
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
     end)
-    notify("Sucesso", "Voo ativado!", 2); return true
+    
+    notify("Voo", "Ativado! Script de fly carregado", 2)
+    return true
 end
 
 local function stopFly()
     flying = false
-    if flightConnection then flightConnection:Disconnect(); flightConnection = nil end
+    
+    -- Tentar limpar o fly ofuscado (remover BodyVelocity/BodyGyro)
     local hum = getHumanoid()
     if hum then
         hum.AutoRotate = true
         if hum.Parent and hum.Parent:FindFirstChild("HumanoidRootPart") then
             local r = hum.Parent.HumanoidRootPart
-            if r:FindFirstChild("BodyGyro") then r.BodyGyro:Destroy() end
-            if r:FindFirstChild("BodyVelocity") then r.BodyVelocity:Destroy() end
+            for _, child in pairs(r:GetChildren()) do
+                if child:IsA("BodyVelocity") or child:IsA("BodyGyro") then
+                    child:Destroy()
+                end
+            end
         end
     end
-    notify("Sucesso", "Voo desativado!", 2)
+    
+    notify("Voo", "Desativado!", 2)
 end
 
 local function enableNoclip()
@@ -305,14 +315,14 @@ local function enableNoclip()
     noclipConnection = RunService.Stepped:Connect(function()
         if noclipEnabled and player.Character then for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end end end
     end)
-    notify("Sucesso", "Noclip ativado!", 2)
+    notify("Noclip", "Ativado!", 2)
 end
 
 local function disableNoclip()
     noclipEnabled = false
     if noclipConnection then noclipConnection:Disconnect(); noclipConnection = nil end
     if player.Character then for _, p in pairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end end
-    notify("Sucesso", "Noclip desativado!", 2)
+    notify("Noclip", "Desativado!", 2)
 end
 
 local function enableAirWalk()
@@ -327,14 +337,14 @@ local function enableAirWalk()
         elseif root and root:FindFirstChild("AirWalkVelocity") then root.AirWalkVelocity:Destroy() end
     end
     airWalkConnection = RunService.RenderStepped:Connect(createPlatform)
-    notify("Sucesso", "Air Walk ativado!", 2)
+    notify("Air Walk", "Ativado!", 2)
 end
 
 local function disableAirWalk()
     airWalkEnabled = false
     if airWalkConnection then airWalkConnection:Disconnect(); airWalkConnection = nil end
     if player.Character then local root = player.Character:FindFirstChild("HumanoidRootPart"); if root and root:FindFirstChild("AirWalkVelocity") then root.AirWalkVelocity:Destroy() end end
-    notify("Sucesso", "Air Walk desativado!", 2)
+    notify("Air Walk", "Desativado!", 2)
 end
 
 local function enableAirSwim()
@@ -353,14 +363,14 @@ local function enableAirSwim()
         end
     end
     airSwimConnection = RunService.RenderStepped:Connect(createSwimEffect)
-    notify("Sucesso", "Air Swim ativado!", 2)
+    notify("Air Swim", "Ativado!", 2)
 end
 
 local function disableAirSwim()
     airSwimEnabled = false
     if airSwimConnection then airSwimConnection:Disconnect(); airSwimConnection = nil end
     if player.Character then local root = player.Character:FindFirstChild("HumanoidRootPart"); if root then if root:FindFirstChild("SwimVelocity") then root.SwimVelocity:Destroy() end; if root:FindFirstChild("SwimGyro") then root.SwimGyro:Destroy() end end end
-    notify("Sucesso", "Air Swim desativado!", 2)
+    notify("Air Swim", "Desativado!", 2)
 end
 
 local function enableInfiniteJump()
@@ -368,13 +378,13 @@ local function enableInfiniteJump()
     infiniteJumpConnection = UIS.JumpRequest:Connect(function()
         if infiniteJumpEnabled then local hum = getHumanoid(); if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end end
     end)
-    notify("Sucesso", "Infinite Jump ativado!", 2)
+    notify("Infinite Jump", "Ativado!", 2)
 end
 
 local function disableInfiniteJump()
     infiniteJumpEnabled = false
     if infiniteJumpConnection then infiniteJumpConnection:Disconnect(); infiniteJumpConnection = nil end
-    notify("Sucesso", "Infinite Jump desativado!", 2)
+    notify("Infinite Jump", "Desativado!", 2)
 end
 
 local function morphPlayer(targetPlayer)
@@ -389,7 +399,7 @@ local function morphPlayer(targetPlayer)
             if myPart and targetPart and myPart:IsA("BasePart") and targetPart:IsA("BasePart") then myPart.BrickColor = targetPart.BrickColor; myPart.Color = targetPart.Color; myPart.Size = targetPart.Size; myPart.Transparency = targetPart.Transparency; myPart.Material = targetPart.Material end
         end
     end
-    pcall(cloneCharacter); notify("Sucesso", "Transformado em: " .. targetPlayer.Name, 3)
+    pcall(cloneCharacter); notify("Morph", "Transformado em: " .. targetPlayer.Name, 3)
 end
 
 local function enableESP()
@@ -404,13 +414,13 @@ local function enableESP()
     end
     for _, plr in pairs(game.Players:GetPlayers()) do if plr ~= player then if plr.Character then createESP(plr.Character, plr.Name, Color3.fromRGB(0, 255, 255), false) end; plr.CharacterAdded:Connect(function(char) if espEnabled then task.wait(0.5); createESP(char, plr.Name, Color3.fromRGB(0, 255, 255), false) end end) end end
     for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not game.Players:GetPlayerFromCharacter(obj) then if obj.Humanoid.Health > 0 then createESP(obj, "[NPC] " .. obj.Name, Color3.fromRGB(255, 255, 0), true) end end end
-    notify("Sucesso", "ESP ativado!", 2)
+    notify("ESP", "Ativado!", 2)
 end
 
 local function disableESP()
     espEnabled = false
     for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("BillboardGui") and obj.Name == "ESP_Gui" then obj:Destroy() end; if obj:IsA("Highlight") and obj.Name == "ESP_Highlight" then obj:Destroy() end end
-    notify("Sucesso", "ESP desativado!", 2)
+    notify("ESP", "Desativado!", 2)
 end
 
 player.CharacterAdded:Connect(function(char)
@@ -419,44 +429,39 @@ player.CharacterAdded:Connect(function(char)
     if backgroundImageId then task.wait(0.5); changeBackground(backgroundImageId) end
 end)
 
-local MainTab = Window:CreateTab({Name = "Principal", Icon = "rbxassetid://4483345998"})
-MainTab:CreateSlider({Name = "Velocidade", Range = {16, 200}, Increment = 1, Suffix = " studs/s", CurrentValue = 16, Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
-MainTab:CreateSlider({Name = "Pulo", Range = {50, 300}, Increment = 1, Suffix = " power", CurrentValue = 50, Callback = function(v) local h = getHumanoid() if h then h.JumpPower = v; h.UseJumpPower = true end end})
-MainTab:CreateSection("Info")
-MainTab:CreateLabel("Nameless Admin por CriadorYan")
+local MainTab = Window:CreateTab("Principal", 4483362458)
+MainTab:CreateSlider({Name = "Velocidade", Range = {16, 200}, Increment = 1, Suffix = "studs/s", CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
+MainTab:CreateSlider({Name = "Pulo", Range = {50, 300}, Increment = 1, Suffix = "power", CurrentValue = 50, Flag = "JumpPower", Callback = function(v) local h = getHumanoid() if h then h.JumpPower = v; h.UseJumpPower = true end end})
 
-local FlyTab = Window:CreateTab({Name = "Voo", Icon = "rbxassetid://4483345998"})
-FlyTab:CreateToggle({Name = "Ativar Voo", CurrentValue = false, Callback = function(v) if v then startFly() else if flying then stopFly() end end end})
-FlyTab:CreateSlider({Name = "Velocidade Voo", Range = {20, 200}, Increment = 5, Suffix = " studs/s", CurrentValue = 50, Callback = function(v) flySpeed = v end})
+local FlyTab = Window:CreateTab("Voo", 4483362458)
+FlyTab:CreateToggle({Name = "Ativar Voo", CurrentValue = false, Flag = "Fly", Callback = function(v) if v then startFly() else if flying then stopFly() end end end})
+FlyTab:CreateSlider({Name = "Velocidade Voo", Range = {20, 200}, Increment = 5, Suffix = "studs/s", CurrentValue = 50, Flag = "FlySpeed", Callback = function(v) flySpeed = v end})
 
-local MovementTab = Window:CreateTab({Name = "Movimento", Icon = "rbxassetid://4483345998"})
+local MovementTab = Window:CreateTab("Movimento", 4483362458)
 MovementTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(v) if v then enableNoclip() else disableNoclip() end end})
 MovementTab:CreateToggle({Name = "Air Walk", CurrentValue = false, Callback = function(v) if v then enableAirWalk() else disableAirWalk() end end})
 MovementTab:CreateToggle({Name = "Air Swim", CurrentValue = false, Callback = function(v) if v then enableAirSwim() else disableAirSwim() end end})
 MovementTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) if v then enableInfiniteJump() else disableInfiniteJump() end end})
 
-local CameraTab = Window:CreateTab({Name = "Camera", Icon = "rbxassetid://4483345998"})
+local CameraTab = Window:CreateTab("Camera", 4483362458)
 CameraTab:CreateToggle({Name = "Camera Noclip", CurrentValue = false, Callback = function(v) if v then enableCameraNoclip() else disableCameraNoclip() end end})
 CameraTab:CreateToggle({Name = "Zoom Infinito", CurrentValue = false, Callback = function(v) if v then enableInfiniteCamera() else disableInfiniteCamera() end end})
 
-local WorldTab = Window:CreateTab({Name = "Mundo", Icon = "rbxassetid://4483345998"})
+local WorldTab = Window:CreateTab("Mundo", 4483362458)
 WorldTab:CreateToggle({Name = "Fullbright", CurrentValue = false, Callback = function(v) if v then enableFullbright() else disableFullbright() end end})
 WorldTab:CreateToggle({Name = "NoFog", CurrentValue = false, Callback = function(v) if v then enableNoFog() else disableNoFog() end end})
 
-local TrollTab = Window:CreateTab({Name = "Troll", Icon = "rbxassetid://4483345998"})
+local TrollTab = Window:CreateTab("Troll", 4483362458)
 TrollTab:CreateToggle({Name = "Fling TURBINADO", CurrentValue = false, Callback = function(v) if v then enableFling() else disableFling() end end})
 TrollTab:CreateSection("Morph")
 for _, tp in pairs(game.Players:GetPlayers()) do if tp ~= player then TrollTab:CreateButton({Name = "Morph: " .. tp.Name, Callback = function() morphPlayer(tp) end}) end end
 game.Players.PlayerAdded:Connect(function(np) if np ~= player then TrollTab:CreateButton({Name = "Morph: " .. np.Name, Callback = function() morphPlayer(np) end}) end end)
 
-local ESPTab = Window:CreateTab({Name = "ESP", Icon = "rbxassetid://4483345998"})
+local ESPTab = Window:CreateTab("ESP", 4483362458)
 ESPTab:CreateToggle({Name = "ESP", CurrentValue = false, Callback = function(v) if v then enableESP() else disableESP() end end})
-ESPTab:CreateLabel("Jogadores - Ciano")
-ESPTab:CreateLabel("NPCs - Amarelo")
 
-local VisualTab = Window:CreateTab({Name = "Visual", Icon = "rbxassetid://4483345998"})
+local VisualTab = Window:CreateTab("Visual", 4483362458)
 VisualTab:CreateToggle({Name = "Invisivel", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
-VisualTab:CreateLabel("Transparencia total forcada")
 VisualTab:CreateToggle({Name = "Highlight Jogadores", CurrentValue = false, Callback = function(v)
     highlightEnabled = v
     if v then
@@ -465,16 +470,14 @@ VisualTab:CreateToggle({Name = "Highlight Jogadores", CurrentValue = false, Call
     else for _, plr in pairs(game.Players:GetPlayers()) do if plr.Character then local h = plr.Character:FindFirstChild("PlayerHighlight") if h then h:Destroy() end end end end
 end})
 
-local ConfigTab = Window:CreateTab({Name = "Config", Icon = "rbxassetid://4483345998"})
+local ConfigTab = Window:CreateTab("Config", 4483362458)
 ConfigTab:CreateSection("Background")
-ConfigTab:CreateLabel("Cole o link da imagem:")
-ConfigTab:CreateTextbox({Name = "Link da Imagem", PlaceholderText = "URL ou ID do Roblox...", Callback = function(text) if text and text ~= "" then changeBackground(text) end end})
+ConfigTab:CreateInput({Name = "Link da Imagem", PlaceholderText = "URL ou ID do Roblox...", RemoveTextAfterFocusLost = false, Callback = function(text) if text and text ~= "" then changeBackground(text) end end})
 ConfigTab:CreateButton({Name = "Remover Fundo", Callback = function() removeBackground() end})
 ConfigTab:CreateSection("Sistema")
 ConfigTab:CreateButton({Name = "Destruir Hub", Callback = function() destroyHub() end})
-ConfigTab:CreateLabel("Ao destruir, tudo sera removido!")
 
-notify("Sucesso", "Nameless Admin carregado! por CriadorYan", 5)
+notify("Nameless Admin", "Carregado! por CriadorYan", 3)
 
 game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
     if flying then stopFly() end
