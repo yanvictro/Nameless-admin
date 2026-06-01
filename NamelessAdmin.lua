@@ -1,7 +1,7 @@
 --[[
     Nameless Admin - Painel de Controle Mobile
     Usando Rayfield UI
-    Funcionalidades: WalkSpeed, JumpPower, Fly, Highlight, Noclip, Air Walk, Air Swim, Fling, Morph, ESP
+    Funcionalidades: WalkSpeed, JumpPower, Fly, Highlight, Noclip, Air Walk, Air Swim, Fling, Morph, ESP, Infinite Jump, Invisible
     Criado por: CriadorYan
 ]]
 
@@ -49,6 +49,9 @@ local flingConnection
 local espEnabled = false
 local espConnections = {}
 local highlightEnabled = false
+local infiniteJumpEnabled = false
+local infiniteJumpConnection
+local invisibleEnabled = false
 
 -- Valores padrão
 local defaultWalkSpeed = 16
@@ -231,7 +234,7 @@ local function disableNoclip()
     notify("🚫 Noclip", "Noclip desativado!", 2)
 end
 
--- Função Air Walk (CORRIGIDO)
+-- Função Air Walk
 local function enableAirWalk()
     airWalkEnabled = true
     
@@ -242,7 +245,6 @@ local function enableAirWalk()
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         
         if hum and root and hum:GetState() == Enum.HumanoidStateType.Freefall then
-            -- Criar uma força para manter o jogador no ar
             local bodyVelocity = root:FindFirstChild("AirWalkVelocity")
             if not bodyVelocity then
                 bodyVelocity = Instance.new("BodyVelocity")
@@ -252,7 +254,6 @@ local function enableAirWalk()
                 bodyVelocity.Parent = root
             end
             
-            -- Permitir movimento horizontal
             local moveDirection = hum.MoveDirection
             local horizontalVelocity = Vector3.new(
                 moveDirection.X * hum.WalkSpeed,
@@ -262,7 +263,6 @@ local function enableAirWalk()
             
             bodyVelocity.Velocity = Vector3.new(horizontalVelocity.X, 0, horizontalVelocity.Z)
         else
-            -- Remover quando não estiver caindo
             if root then
                 local bodyVelocity = root:FindFirstChild("AirWalkVelocity")
                 if bodyVelocity then
@@ -285,7 +285,6 @@ local function disableAirWalk()
         airWalkConnection = nil
     end
     
-    -- Limpar
     if player.Character then
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         if root then
@@ -299,7 +298,7 @@ local function disableAirWalk()
     notify("🚶 Air Walk", "Andar no ar desativado!", 2)
 end
 
--- Função Air Swim (CORRIGIDO)
+-- Função Air Swim
 local function enableAirSwim()
     airSwimEnabled = true
     
@@ -310,7 +309,6 @@ local function enableAirSwim()
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         
         if hum and root then
-            -- Simular natação no ar
             local swimVelocity = root:FindFirstChild("SwimVelocity")
             if not swimVelocity then
                 swimVelocity = Instance.new("BodyVelocity")
@@ -320,7 +318,6 @@ local function enableAirSwim()
                 swimVelocity.Parent = root
             end
             
-            -- Movimento de natação
             local moveDirection = hum.MoveDirection
             local camera = workspace.CurrentCamera
             
@@ -330,23 +327,18 @@ local function enableAirSwim()
                 local up = camera.CFrame.UpVector
                 
                 local velocity = Vector3.new()
-                
-                -- Movimento horizontal
                 velocity = velocity + (forward * -moveDirection.Z * hum.WalkSpeed)
                 velocity = velocity + (right * moveDirection.X * hum.WalkSpeed)
                 
-                -- Movimento vertical com o salto
                 if hum.Jump then
                     velocity = velocity + (up * hum.JumpPower * 0.5)
                 end
                 
                 swimVelocity.Velocity = velocity
             else
-                -- Flutuar suavemente
                 swimVelocity.Velocity = Vector3.new(0, 0.5, 0)
             end
             
-            -- Efeito de rotação suave
             local bodyGyro = root:FindFirstChild("SwimGyro")
             if not bodyGyro then
                 bodyGyro = Instance.new("BodyGyro")
@@ -373,7 +365,6 @@ local function disableAirSwim()
         airSwimConnection = nil
     end
     
-    -- Limpar
     if player.Character then
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         if root then
@@ -392,7 +383,85 @@ local function disableAirSwim()
     notify("🏊 Air Swim", "Nadar no ar desativado!", 2)
 end
 
--- Função Fling (CORRIGIDO E MELHORADO)
+-- Função Infinite Jump (NOVO)
+local function enableInfiniteJump()
+    infiniteJumpEnabled = true
+    
+    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if infiniteJumpEnabled then
+            local hum = getHumanoid()
+            if hum then
+                -- Forçar o pulo mesmo no ar
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+    
+    notify("🦘 Infinite Jump", "Pulo infinito ativado! Pule quantas vezes quiser", 2)
+end
+
+local function disableInfiniteJump()
+    infiniteJumpEnabled = false
+    
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+    
+    notify("🦘 Infinite Jump", "Pulo infinito desativado!", 2)
+end
+
+-- Função Invisible (NOVO)
+local function enableInvisible()
+    invisibleEnabled = true
+    
+    if player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = 1
+            end
+            if part:IsA("Accessory") then
+                part.Handle.Transparency = 1
+            end
+        end
+    end
+    
+    -- Manter invisível quando o personagem renascer
+    player.CharacterAdded:Connect(function(char)
+        if invisibleEnabled then
+            task.wait(0.1)
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") then
+                    part.Transparency = 1
+                end
+                if part:IsA("Accessory") then
+                    part.Handle.Transparency = 1
+                end
+            end
+        end
+    end)
+    
+    notify("👻 Invisível", "Invisibilidade ativada! Ninguém pode te ver", 2)
+end
+
+local function disableInvisible()
+    invisibleEnabled = false
+    
+    if player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = 0
+            end
+            if part:IsA("Accessory") then
+                part.Handle.Transparency = 0
+            end
+        end
+    end
+    
+    notify("👻 Invisível", "Invisibilidade desativada!", 2)
+end
+
+-- Função Fling
 local function enableFling()
     flingEnabled = true
     
@@ -410,22 +479,17 @@ local function enableFling()
                 if otherRoot and otherHum then
                     local distance = (myRoot.Position - otherRoot.Position).Magnitude
                     
-                    -- Aumentado alcance para 30 studs
                     if distance < 30 then
-                        -- Criar força explosiva
                         local flingForce = Instance.new("BodyVelocity")
                         flingForce.MaxForce = Vector3.new(1, 1, 1) * math.huge
                         
-                        -- Direção aleatória mas com força extrema
                         local direction = (otherRoot.Position - myRoot.Position).Unit
                         flingForce.Velocity = direction * 10000 + Vector3.new(0, 10000, 0)
                         
                         flingForce.Parent = otherRoot
                         
-                        -- Destruir após aplicar força
                         game:GetService("Debris"):AddItem(flingForce, 0.1)
                         
-                        -- Também aplicar força rotacional para efeito mais caótico
                         local flingSpin = Instance.new("BodyAngularVelocity")
                         flingSpin.MaxTorque = Vector3.new(1, 1, 1) * math.huge
                         flingSpin.AngularVelocity = Vector3.new(
@@ -471,14 +535,12 @@ local function morphPlayer(targetPlayer)
         
         if not myChar or not targetChar then return end
         
-        -- Remover roupas atuais
         for _, item in pairs(myChar:GetChildren()) do
             if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") then
                 item:Destroy()
             end
         end
         
-        -- Copiar roupas do alvo
         for _, item in pairs(targetChar:GetChildren()) do
             if item:IsA("Shirt") then
                 local newShirt = item:Clone()
@@ -495,7 +557,6 @@ local function morphPlayer(targetPlayer)
             end
         end
         
-        -- Copiar cores do corpo e escalas
         for _, partName in pairs({"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}) do
             local myPart = myChar:FindFirstChild(partName)
             local targetPart = targetChar:FindFirstChild(partName)
@@ -514,11 +575,10 @@ local function morphPlayer(targetPlayer)
     notify("🎭 Morph", "Transformado em: " .. targetPlayer.Name, 3)
 end
 
--- Função ESP para NPCs e Jogadores
+-- Função ESP
 local function enableESP()
     espEnabled = true
     
-    -- Limpar ESPs existentes
     for _, existing in pairs(workspace:GetDescendants()) do
         if existing:IsA("BillboardGui") and existing.Name == "ESP_Gui" then
             existing:Destroy()
@@ -528,7 +588,6 @@ local function enableESP()
         end
     end
     
-    -- Função para criar ESP em um modelo
     local function createESP(model, name, color, isNPC)
         if not model then return end
         
@@ -537,7 +596,6 @@ local function enableESP()
         
         if not head or not humanoid then return end
         
-        -- Criar Highlight
         local highlight = Instance.new("Highlight")
         highlight.Name = "ESP_Highlight"
         highlight.FillColor = color
@@ -546,7 +604,6 @@ local function enableESP()
         highlight.OutlineTransparency = 0.3
         highlight.Parent = model
         
-        -- Criar BillboardGui para nome
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "ESP_Gui"
         billboard.Size = UDim2.new(0, 200, 0, 50)
@@ -565,12 +622,11 @@ local function enableESP()
         textLabel.Text = name
         
         if isNPC then
-            textLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Amarelo para NPCs
+            textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
         end
         
         textLabel.Parent = billboard
         
-        -- Armazenar conexão
         table.insert(espConnections, {
             model = model,
             highlight = highlight,
@@ -578,7 +634,6 @@ local function enableESP()
         })
     end
     
-    -- Adicionar ESP para jogadores
     for _, plr in pairs(game.Players:GetPlayers()) do
         if plr ~= player then
             if plr.Character then
@@ -594,7 +649,6 @@ local function enableESP()
         end
     end
     
-    -- Adicionar ESP para NPCs
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not game.Players:GetPlayerFromCharacter(obj) then
             local humanoid = obj:FindFirstChild("Humanoid")
@@ -605,7 +659,6 @@ local function enableESP()
         end
     end
     
-    -- Monitorar novos NPCs
     local npcMonitor = workspace.DescendantAdded:Connect(function(descendant)
         if espEnabled and descendant:IsA("Model") then
             task.wait(0.5)
@@ -621,7 +674,6 @@ local function enableESP()
     
     table.insert(espConnections, npcMonitor)
     
-    -- Monitorar novos jogadores
     local playerMonitor = game.Players.PlayerAdded:Connect(function(newPlayer)
         newPlayer.CharacterAdded:Connect(function(char)
             if espEnabled then
@@ -639,7 +691,6 @@ end
 local function disableESP()
     espEnabled = false
     
-    -- Limpar todas as conexões
     for _, connection in pairs(espConnections) do
         if typeof(connection) == "RBXScriptConnection" then
             connection:Disconnect()
@@ -655,7 +706,6 @@ local function disableESP()
     
     espConnections = {}
     
-    -- Limpar todos os ESPs visuais
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("BillboardGui") and obj.Name == "ESP_Gui" then
             obj:Destroy()
@@ -680,6 +730,18 @@ player.CharacterAdded:Connect(function(char)
     if noclipEnabled then
         task.wait(0.1)
         enableNoclip()
+    end
+    
+    if invisibleEnabled then
+        task.wait(0.1)
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = 1
+            end
+            if part:IsA("Accessory") then
+                part.Handle.Transparency = 1
+            end
+        end
     end
 end)
 
@@ -813,6 +875,19 @@ MovementTab:CreateToggle({
     end,
 })
 
+MovementTab:CreateToggle({
+    Name = "Pulo Infinito (Infinite Jump)",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        if Value then
+            enableInfiniteJump()
+        else
+            disableInfiniteJump()
+        end
+    end,
+})
+
 -- ===== ABA DE TROLL =====
 
 TrollTab:CreateToggle({
@@ -881,6 +956,19 @@ ESPTab:CreateParagraph({
 -- ===== ABA VISUAL =====
 
 VisualTab:CreateToggle({
+    Name = "Invisível (Ghost Mode)",
+    CurrentValue = false,
+    Flag = "Invisible",
+    Callback = function(Value)
+        if Value then
+            enableInvisible()
+        else
+            disableInvisible()
+        end
+    end,
+})
+
+VisualTab:CreateToggle({
     Name = "Highlight de Jogadores",
     CurrentValue = false,
     Flag = "Highlight",
@@ -934,7 +1022,7 @@ VisualTab:CreateSection("ℹ️ Nameless Admin")
 
 VisualTab:CreateParagraph({
     Title = "Criado por CriadorYan",
-    Content = "Hub otimizado para mobile\nMúltiplas funcionalidades\nAtualizado e melhorado"
+    Content = "Hub otimizado para mobile\nMúltiplas funcionalidades\nAtualizado com Infinite Jump e Invisível"
 })
 
 -- Notificação inicial
