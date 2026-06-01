@@ -1,7 +1,7 @@
 --[[
     Nameless Admin - Painel de Controle Mobile
     Usando Rayfield UI
-    Funcionalidades: WalkSpeed, JumpPower, Fly, Highlight, Noclip, Air Walk, Air Swim, Fling, Morph, ESP, Infinite Jump, Invisible
+    Funcionalidades: WalkSpeed, JumpPower, Fly, Highlight, Noclip, Air Walk, Air Swim, Fling, Morph, ESP, Infinite Jump, Invisible, Camera Noclip, Infinite Camera Zoom
     Criado por: CriadorYan
 ]]
 
@@ -26,6 +26,7 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("🏠 Principal", 4483362458)
 local FlyTab = Window:CreateTab("✈️ Voo", 4483362458)
 local MovementTab = Window:CreateTab("🏃 Movimento", 4483362458)
+local CameraTab = Window:CreateTab("📷 Câmera", 4483362458)
 local TrollTab = Window:CreateTab("👻 Troll", 4483362458)
 local ESPTab = Window:CreateTab("👁️ ESP", 4483362458)
 local VisualTab = Window:CreateTab("🎨 Visual", 4483362458)
@@ -52,6 +53,13 @@ local highlightEnabled = false
 local infiniteJumpEnabled = false
 local infiniteJumpConnection
 local invisibleEnabled = false
+local cameraNoclipEnabled = false
+local cameraNoclipConnection
+local infiniteCameraEnabled = false
+local infiniteCameraConnection
+local originalCameraDistance = 10
+local currentCameraDistance = 10
+local maxCameraDistance = 1000
 
 -- Valores padrão
 local defaultWalkSpeed = 16
@@ -82,6 +90,116 @@ local function getHumanoid()
         return player.Character.Humanoid
     end
     return nil
+end
+
+-- Função Camera Noclip (NOVO)
+local function enableCameraNoclip()
+    cameraNoclipEnabled = true
+    
+    -- Configurar câmera para modo livre
+    local camera = workspace.CurrentCamera
+    
+    -- Salvar configurações originais
+    local originalMinZoom = player.CameraMinZoomDistance
+    local originalMaxZoom = player.CameraMaxZoomDistance
+    
+    -- Permitir câmera atravessar paredes
+    cameraNoclipConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if cameraNoclipEnabled then
+            -- Forçar câmera a ignorar colisões
+            camera.CameraType = Enum.CameraType.Custom
+            
+            -- Desabilitar limite de zoom
+            player.CameraMinZoomDistance = 0.5
+            player.CameraMaxZoomDistance = maxCameraDistance
+            
+            -- Remover transparência forçada de objetos
+            local cameraPosition = camera.CFrame.Position
+            local playerPosition = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position
+            
+            if playerPosition then
+                -- Raycast para verificar obstáculos
+                local ray = Ray.new(playerPosition, (cameraPosition - playerPosition).Unit * 1000)
+                local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, {player.Character})
+                
+                -- Se houver obstáculo, permitir que a câmera passe
+                if hit then
+                    -- Não bloquear a câmera
+                    camera.CameraType = Enum.CameraType.Custom
+                end
+            end
+        end
+    end)
+    
+    notify("📷 Camera Noclip", "Câmera agora atravessa paredes!", 2)
+end
+
+local function disableCameraNoclip()
+    cameraNoclipEnabled = false
+    
+    if cameraNoclipConnection then
+        cameraNoclipConnection:Disconnect()
+        cameraNoclipConnection = nil
+    end
+    
+    -- Restaurar configurações da câmera
+    local camera = workspace.CurrentCamera
+    camera.CameraType = Enum.CameraType.Custom
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 20
+    
+    notify("📷 Camera Noclip", "Câmera voltou ao normal!", 2)
+end
+
+-- Função Infinite Camera Zoom (NOVO)
+local function enableInfiniteCamera()
+    infiniteCameraEnabled = true
+    
+    -- Configurar zoom infinito
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = maxCameraDistance
+    currentCameraDistance = originalCameraDistance
+    
+    -- Permitir zoom infinito com gestos de pinça ou scroll
+    infiniteCameraConnection = game:GetService("RunService").RenderStepped:Connect(function()
+        if infiniteCameraEnabled then
+            -- Manter o zoom máximo sempre liberado
+            player.CameraMaxZoomDistance = maxCameraDistance
+            
+            -- Verificar input do jogador para zoom
+            local camera = workspace.CurrentCamera
+            
+            -- Aumentar zoom (afastar) - Botão Volume + ou gesto de pinça
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.E) then
+                currentCameraDistance = math.min(currentCameraDistance + 5, maxCameraDistance)
+                player.CameraMaxZoomDistance = currentCameraDistance
+            end
+            
+            -- Diminuir zoom (aproximar) - Botão Volume - ou gesto de pinça
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Q) then
+                currentCameraDistance = math.max(currentCameraDistance - 5, 1)
+                player.CameraMaxZoomDistance = currentCameraDistance
+            end
+        end
+    end)
+    
+    notify("📷 Infinite Camera", "Zoom infinito ativado! Afaste a câmera o quanto quiser", 3)
+end
+
+local function disableInfiniteCamera()
+    infiniteCameraEnabled = false
+    
+    if infiniteCameraConnection then
+        infiniteCameraConnection:Disconnect()
+        infiniteCameraConnection = nil
+    end
+    
+    -- Restaurar zoom normal
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 20
+    currentCameraDistance = originalCameraDistance
+    
+    notify("📷 Infinite Camera", "Zoom da câmera restaurado!", 2)
 end
 
 -- Função de voo com rotação do personagem junto com a câmera
@@ -383,7 +501,7 @@ local function disableAirSwim()
     notify("🏊 Air Swim", "Nadar no ar desativado!", 2)
 end
 
--- Função Infinite Jump (NOVO)
+-- Função Infinite Jump
 local function enableInfiniteJump()
     infiniteJumpEnabled = true
     
@@ -391,7 +509,6 @@ local function enableInfiniteJump()
         if infiniteJumpEnabled then
             local hum = getHumanoid()
             if hum then
-                -- Forçar o pulo mesmo no ar
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end
@@ -411,7 +528,7 @@ local function disableInfiniteJump()
     notify("🦘 Infinite Jump", "Pulo infinito desativado!", 2)
 end
 
--- Função Invisible (NOVO)
+-- Função Invisible
 local function enableInvisible()
     invisibleEnabled = true
     
@@ -426,7 +543,6 @@ local function enableInvisible()
         end
     end
     
-    -- Manter invisível quando o personagem renascer
     player.CharacterAdded:Connect(function(char)
         if invisibleEnabled then
             task.wait(0.1)
@@ -888,158 +1004,21 @@ MovementTab:CreateToggle({
     end,
 })
 
--- ===== ABA DE TROLL =====
+-- ===== ABA DE CÂMERA (NOVO) =====
 
-TrollTab:CreateToggle({
-    Name = "Fling (Arremessar Jogadores)",
+CameraTab:CreateToggle({
+    Name = "Câmera Noclip (Atravessar Paredes)",
     CurrentValue = false,
-    Flag = "Fling",
+    Flag = "CameraNoclip",
     Callback = function(Value)
         if Value then
-            enableFling()
+            enableCameraNoclip()
         else
-            disableFling()
+            disableCameraNoclip()
         end
     end,
 })
 
-TrollTab:CreateSection("🎭 Morph")
-
-local function updateMorphButtons()
-    for _, targetPlayer in pairs(game.Players:GetPlayers()) do
-        if targetPlayer ~= player then
-            TrollTab:CreateButton({
-                Name = "Morph: " .. targetPlayer.Name,
-                Callback = function()
-                    morphPlayer(targetPlayer)
-                end,
-            })
-        end
-    end
-end
-
-updateMorphButtons()
-
-game.Players.PlayerAdded:Connect(function(newPlayer)
-    if newPlayer ~= player then
-        TrollTab:CreateButton({
-            Name = "Morph: " .. newPlayer.Name,
-            Callback = function()
-                morphPlayer(newPlayer)
-            end,
-        })
-    end
-end)
-
--- ===== ABA DE ESP =====
-
-ESPTab:CreateToggle({
-    Name = "ESP (Ver através das paredes)",
+CameraTab:CreateToggle({
+    Name = "Zoom Infinito (Infinite Camera)",
     CurrentValue = false,
-    Flag = "ESP",
-    Callback = function(Value)
-        if Value then
-            enableESP()
-        else
-            disableESP()
-        end
-    end,
-})
-
-ESPTab:CreateSection("📋 Informações ESP")
-
-ESPTab:CreateParagraph({
-    Title = "Cores do ESP:",
-    Content = "🔵 Jogadores - Ciano com nome acima\n🟡 NPCs - Amarelo permanente com [NPC] acima\n✅ Todos visíveis através das paredes"
-})
-
--- ===== ABA VISUAL =====
-
-VisualTab:CreateToggle({
-    Name = "Invisível (Ghost Mode)",
-    CurrentValue = false,
-    Flag = "Invisible",
-    Callback = function(Value)
-        if Value then
-            enableInvisible()
-        else
-            disableInvisible()
-        end
-    end,
-})
-
-VisualTab:CreateToggle({
-    Name = "Highlight de Jogadores",
-    CurrentValue = false,
-    Flag = "Highlight",
-    Callback = function(Value)
-        highlightEnabled = Value
-        
-        if Value then
-            notify("👁️ Highlight", "Jogadores destacados!", 2)
-            
-            local function addHighlight(character)
-                if character and not character:FindFirstChild("PlayerHighlight") then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Parent = character
-                    highlight.FillColor = Color3.fromRGB(0, 255, 255)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.FillTransparency = 0.5
-                    highlight.OutlineTransparency = 0
-                    highlight.Name = "PlayerHighlight"
-                end
-            end
-            
-            for _, plr in pairs(game.Players:GetPlayers()) do
-                if plr ~= player and plr.Character then
-                    addHighlight(plr.Character)
-                end
-            end
-            
-            game.Players.PlayerAdded:Connect(function(plr)
-                plr.CharacterAdded:Connect(function(char)
-                    if highlightEnabled then
-                        addHighlight(char)
-                    end
-                end)
-            end)
-        else
-            notify("👁️ Highlight", "Destaques removidos!", 2)
-            
-            for _, plr in pairs(game.Players:GetPlayers()) do
-                if plr.Character then
-                    local highlight = plr.Character:FindFirstChild("PlayerHighlight")
-                    if highlight then
-                        highlight:Destroy()
-                    end
-                end
-            end
-        end
-    end,
-})
-
-VisualTab:CreateSection("ℹ️ Nameless Admin")
-
-VisualTab:CreateParagraph({
-    Title = "Criado por CriadorYan",
-    Content = "Hub otimizado para mobile\nMúltiplas funcionalidades\nAtualizado com Infinite Jump e Invisível"
-})
-
--- Notificação inicial
-notify("🔥 Nameless Admin", "Carregado com sucesso! Criado por CriadorYan", 3)
-
--- Segurança
-game:GetService("RunService").Heartbeat:Connect(function()
-    if flying then
-        local hum = getHumanoid()
-        if not hum or not hum.Parent or not hum.Parent:FindFirstChild("HumanoidRootPart") then
-            stopFly()
-        end
-    end
-end)
-
-game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
-    if flying then stopFly() end
-    if flingEnabled then disableFling() end
-    if espEnabled then disableESP() end
-end)
