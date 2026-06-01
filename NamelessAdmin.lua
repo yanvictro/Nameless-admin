@@ -275,63 +275,53 @@ local function disableNoFog()
     notify("NoFog", "Desativado!", 2)
 end
 
--- ============================================
--- F3X BUILDING TOOLS
--- ============================================
 local function loadF3X()
     if f3xLoaded then
-        notify("F3X", "Ferramenta de construcao ja esta carregada!", 2)
+        notify("F3X", "Ferramenta ja carregada!", 2)
         return
     end
-    
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/ImFEARLESScheat/F3X/main/F3X.lua"))()
         f3xLoaded = true
-        notify("F3X", "Ferramenta de construcao carregada! Use B para abrir", 4)
+        notify("F3X", "Ferramenta carregada! Use B para abrir", 4)
     end)
 end
 
-local function createPart(partType, color)
+local function createPart(partType)
     local char = player.Character
     if not char then notify("Erro", "Personagem nao encontrado!", 2) return end
     local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then notify("Erro", "HumanoidRootPart nao encontrado!", 2) return end
+    if not root then notify("Erro", "RootPart nao encontrada!", 2) return end
     
     local part = Instance.new("Part")
     part.Position = root.Position + Vector3.new(0, 5, 0)
     part.Anchored = true
     part.CanCollide = true
-    part.BrickColor = color or BrickColor.random()
+    part.BrickColor = BrickColor.random()
     part.Material = Enum.Material.SmoothPlastic
     part.Parent = workspace
     
     if partType == "Block" then
         part.Size = Vector3.new(4, 2, 4)
-        part.Name = "Bloco"
     elseif partType == "Sphere" then
         part.Shape = Enum.PartType.Ball
         part.Size = Vector3.new(4, 4, 4)
-        part.Name = "Esfera"
     elseif partType == "Cylinder" then
         part.Shape = Enum.PartType.Cylinder
         part.Size = Vector3.new(4, 4, 4)
-        part.Name = "Cilindro"
     elseif partType == "Triangle" then
         local mesh = Instance.new("SpecialMesh")
         mesh.MeshType = Enum.MeshType.Wedge
         mesh.Parent = part
         part.Size = Vector3.new(4, 2, 4)
-        part.Name = "Triangulo"
     elseif partType == "CornerWedge" then
         local mesh = Instance.new("SpecialMesh")
         mesh.MeshType = Enum.MeshType.CornerWedge
         mesh.Parent = part
         part.Size = Vector3.new(4, 4, 4)
-        part.Name = "Cunha de Canto"
     elseif partType == "Truss" then
         part.Size = Vector3.new(4, 8, 4)
         part.Material = Enum.Material.Metal
-        part.Name = "Trelica"
     end
     
     notify("Construcao", partType .. " criado!", 2)
@@ -340,11 +330,9 @@ end
 local function deleteAllBuilds()
     local count = 0
     for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Part") and obj.Anchored then
-            if not obj:FindFirstChildOfClass("Humanoid") and obj.Parent == workspace then
-                obj:Destroy()
-                count = count + 1
-            end
+        if obj:IsA("Part") and obj.Anchored and obj.Parent == workspace and not obj:FindFirstChildOfClass("Humanoid") then
+            obj:Destroy()
+            count = count + 1
         end
     end
     notify("Construcao", count .. " pecas deletadas!", 2)
@@ -489,9 +477,6 @@ local function disableESP()
     notify("ESP", "Desativado!", 2)
 end
 
--- ============================================
--- ABAS
--- ============================================
 local MainTab = Window:CreateTab("Principal", 4483362458)
 MainTab:CreateSlider({Name = "Velocidade", Range = {16, 200}, Increment = 1, Suffix = "studs/s", CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
 MainTab:CreateSlider({Name = "Pulo", Range = {50, 300}, Increment = 1, Suffix = "power", CurrentValue = 50, Flag = "JumpPower", Callback = function(v) local h = getHumanoid() if h then h.JumpPower = v; h.UseJumpPower = true end end})
@@ -506,27 +491,23 @@ MovementTab:CreateToggle({Name = "Air Walk", CurrentValue = false, Callback = fu
 MovementTab:CreateToggle({Name = "Air Swim", CurrentValue = false, Callback = function(v) if v then enableAirSwim() else disableAirSwim() end end})
 MovementTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) if v then enableInfiniteJump() else disableInfiniteJump() end end})
 
--- ============================================
--- ABA MUNDO - F3X ADICIONADO AQUI
--- ============================================
 local WorldTab = Window:CreateTab("Mundo", 4483362458)
 WorldTab:CreateToggle({Name = "Fullbright", CurrentValue = false, Callback = function(v) if v then enableFullbright() else disableFullbright() end end})
 WorldTab:CreateToggle({Name = "NoFog", CurrentValue = false, Callback = function(v) if v then enableNoFog() else disableNoFog() end end})
 
-WorldTab:CreateSection("🔨 Construcao (F3X)")
+WorldTab:CreateSection("Construcao (F3X)")
 WorldTab:CreateButton({Name = "Abrir F3X Building Tools", Callback = function() loadF3X() end})
 WorldTab:CreateLabel("Pressione B para abrir/fechar o F3X")
-WorldTab:CreateLabel("Use o F3X para construir livremente!")
 
-WorldTab:CreateSection("📐 Criar Pecas Rapidas")
-WorldTab:CreateButton({Name = "Criar Bloco 🟦", Callback = function() createPart("Block") end})
-WorldTab:CreateButton({Name = "Criar Esfera 🔵", Callback = function() createPart("Sphere") end})
-WorldTab:CreateButton({Name = "Criar Cilindro 🫙", Callback = function() createPart("Cylinder") end})
-WorldTab:CreateButton({Name = "Criar Triangulo 🔺", Callback = function() createPart("Triangle") end})
-WorldTab:CreateButton({Name = "Criar Cunha de Canto 📐", Callback = function() createPart("CornerWedge") end})
-WorldTab:CreateButton({Name = "Criar Trelica 🏗️", Callback = function() createPart("Truss") end})
+WorldTab:CreateSection("Criar Pecas Rapidas")
+WorldTab:CreateButton({Name = "Criar Bloco", Callback = function() createPart("Block") end})
+WorldTab:CreateButton({Name = "Criar Esfera", Callback = function() createPart("Sphere") end})
+WorldTab:CreateButton({Name = "Criar Cilindro", Callback = function() createPart("Cylinder") end})
+WorldTab:CreateButton({Name = "Criar Triangulo", Callback = function() createPart("Triangle") end})
+WorldTab:CreateButton({Name = "Criar Cunha de Canto", Callback = function() createPart("CornerWedge") end})
+WorldTab:CreateButton({Name = "Criar Trelica", Callback = function() createPart("Truss") end})
 
-WorldTab:CreateSection("🗑️ Limpar")
+WorldTab:CreateSection("Limpar")
 WorldTab:CreateButton({Name = "Deletar Todas Construcoes", Callback = function() deleteAllBuilds() end})
 
 local CameraTab = Window:CreateTab("Camera", 4483362458)
@@ -543,13 +524,14 @@ local ESPTab = Window:CreateTab("ESP", 4483362458)
 ESPTab:CreateToggle({Name = "ESP", CurrentValue = false, Callback = function(v) if v then enableESP() else disableESP() end end})
 
 local VisualTab = Window:CreateTab("Visual", 4483362458)
-VisualTab:CreateToggle({Name = "Invisivel (NUCLEARBOBO)", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
+VisualTab:CreateToggle({Name = "Invisivel", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
 VisualTab:CreateToggle({Name = "Highlight Jogadores", CurrentValue = false, Callback = function(v)
     highlightEnabled = v
     if v then
         local function ah(c) if c and not c:FindFirstChild("PlayerHighlight") then local h = Instance.new("Highlight"); h.Name = "PlayerHighlight"; h.FillColor = Color3.fromRGB(0, 255, 255); h.OutlineColor = Color3.fromRGB(255, 255, 255); h.FillTransparency = 0.5; h.Parent = c end end
         for _, plr in pairs(game.Players:GetPlayers()) do if plr ~= player and plr.Character then ah(plr.Character) end end
-    else for _, plr in pairs(game.Players:GetPlayers()) do if plr.Character then local h = plr.Character:FindFirstChild("PlayerHighlight") if h then h:Destroy() end end end endend})
+    else for _, plr in pairs(game.Players:GetPlayers()) do if plr.Character then local h = plr.Character:FindFirstChild("PlayerHighlight") if h then h:Destroy() end end end end
+end})
 
 local ConfigTab = Window:CreateTab("Config", 4483362458)
 ConfigTab:CreateSection("Background")
