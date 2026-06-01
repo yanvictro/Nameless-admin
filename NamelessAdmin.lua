@@ -1022,3 +1022,182 @@ CameraTab:CreateToggle({
 CameraTab:CreateToggle({
     Name = "Zoom Infinito (Infinite Camera)",
     CurrentValue = false,
+    Flag = "InfiniteCamera",
+    Callback = function(Value)
+        if Value then
+            enableInfiniteCamera()
+        else
+            disableInfiniteCamera()
+        end
+    end,
+})
+
+CameraTab:CreateSection("📋 Controles da Câmera")
+
+CameraTab:CreateParagraph({
+    Title = "Camera Noclip:",
+    Content = "📷 A câmera atravessa paredes e objetos\n✅ Ideal para explorar o mapa\n✅ Visão completa sem obstáculos"
+})
+
+CameraTab:CreateParagraph({
+    Title = "Zoom Infinito:",
+    Content = "🔍 Afaste a câmera o quanto quiser\n📱 Use gesto de pinça na tela\n⌨️ Teclas Q (aproximar) e E (afastar)\n✅ Zoom máximo: 1000 studs"
+})
+
+-- ===== ABA DE TROLL =====
+
+TrollTab:CreateToggle({
+    Name = "Fling (Arremessar Jogadores)",
+    CurrentValue = false,
+    Flag = "Fling",
+    Callback = function(Value)
+        if Value then
+            enableFling()
+        else
+            disableFling()
+        end
+    end,
+})
+
+TrollTab:CreateSection("🎭 Morph")
+
+local function updateMorphButtons()
+    for _, targetPlayer in pairs(game.Players:GetPlayers()) do
+        if targetPlayer ~= player then
+            TrollTab:CreateButton({
+                Name = "Morph: " .. targetPlayer.Name,
+                Callback = function()
+                    morphPlayer(targetPlayer)
+                end,
+            })
+        end
+    end
+end
+
+updateMorphButtons()
+
+game.Players.PlayerAdded:Connect(function(newPlayer)
+    if newPlayer ~= player then
+        TrollTab:CreateButton({
+            Name = "Morph: " .. newPlayer.Name,
+            Callback = function()
+                morphPlayer(newPlayer)
+            end,
+        })
+    end
+end)
+
+-- ===== ABA DE ESP =====
+
+ESPTab:CreateToggle({
+    Name = "ESP (Ver através das paredes)",
+    CurrentValue = false,
+    Flag = "ESP",
+    Callback = function(Value)
+        if Value then
+            enableESP()
+        else
+            disableESP()
+        end
+    end,
+})
+
+ESPTab:CreateSection("📋 Informações ESP")
+
+ESPTab:CreateParagraph({
+    Title = "Cores do ESP:",
+    Content = "🔵 Jogadores - Ciano com nome acima\n🟡 NPCs - Amarelo permanente com [NPC] acima\n✅ Todos visíveis através das paredes"
+})
+
+-- ===== ABA VISUAL =====
+
+VisualTab:CreateToggle({
+    Name = "Invisível (Ghost Mode)",
+    CurrentValue = false,
+    Flag = "Invisible",
+    Callback = function(Value)
+        if Value then
+            enableInvisible()
+        else
+            disableInvisible()
+        end
+    end,
+})
+
+VisualTab:CreateToggle({
+    Name = "Highlight de Jogadores",
+    CurrentValue = false,
+    Flag = "Highlight",
+    Callback = function(Value)
+        highlightEnabled = Value
+        
+        if Value then
+            notify("👁️ Highlight", "Jogadores destacados!", 2)
+            
+            local function addHighlight(character)
+                if character and not character:FindFirstChild("PlayerHighlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Parent = character
+                    highlight.FillColor = Color3.fromRGB(0, 255, 255)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.Name = "PlayerHighlight"
+                end
+            end
+            
+            for _, plr in pairs(game.Players:GetPlayers()) do
+                if plr ~= player and plr.Character then
+                    addHighlight(plr.Character)
+                end
+            end
+            
+            game.Players.PlayerAdded:Connect(function(plr)
+                plr.CharacterAdded:Connect(function(char)
+                    if highlightEnabled then
+                        addHighlight(char)
+                    end
+                end)
+            end)
+        else
+            notify("👁️ Highlight", "Destaques removidos!", 2)
+            
+            for _, plr in pairs(game.Players:GetPlayers()) do
+                if plr.Character then
+                    local highlight = plr.Character:FindFirstChild("PlayerHighlight")
+                    if highlight then
+                        highlight:Destroy()
+                    end
+                end
+            end
+        end
+    end,
+})
+
+VisualTab:CreateSection("ℹ️ Nameless Admin")
+
+VisualTab:CreateParagraph({
+    Title = "Criado por CriadorYan",
+    Content = "Hub otimizado para mobile\nMúltiplas funcionalidades\nCamera Noclip e Zoom Infinito adicionados"
+})
+
+-- Notificação inicial
+notify("🔥 Nameless Admin", "Carregado com sucesso! Criado por CriadorYan", 3)
+
+-- Segurança
+game:GetService("RunService").Heartbeat:Connect(function()
+    if flying then
+        local hum = getHumanoid()
+        if not hum or not hum.Parent or not hum.Parent:FindFirstChild("HumanoidRootPart") then
+            stopFly()
+        end
+    end
+end)
+
+game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
+    if flying then stopFly() end
+    if flingEnabled then disableFling() end
+    if espEnabled then disableESP() end
+    if cameraNoclipEnabled then disableCameraNoclip() end
+    if infiniteCameraEnabled then disableInfiniteCamera() end
+end)
