@@ -25,6 +25,9 @@ local airSwimConnection
 local flingEnabled = false
 local flingConnection
 local espEnabled = false
+local espConnections = {}
+local touchESPEnabled = false
+local touchESPConnections = {}
 local infiniteJumpEnabled = false
 local infiniteJumpConnection
 local invisibleEnabled = false
@@ -187,44 +190,128 @@ local function disableInfiniteCamera()
     notify("Zoom Infinito", "Desativado!", 2)
 end
 
+-- ============================================
+-- NOVO FLING TURBINADO (REFATORADO)
+-- ============================================
 local function enableFling()
+    if flingEnabled then return end
     flingEnabled = true
+    
+    local function applyFling(targetRoot, targetHumanoid, direction, strength)
+        if not targetRoot or not targetHumanoid then return end
+        
+        -- Remove velocities antigos
+        for _, v in pairs(targetRoot:GetChildren()) do
+            if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyForce") then
+                v:Destroy()
+            end
+        end
+        
+        -- BodyVelocity principal (explosão)
+        local bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = direction * strength + Vector3.new(math.random(-150, 150), math.random(50, 300), math.random(-150, 150))
+        bv.Parent = targetRoot
+        
+        -- BodyAngularVelocity (giro descontrolado)
+        local ang = Instance.new("BodyAngularVelocity")
+        ang.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        ang.AngularVelocity = Vector3.new(math.random(-200, 200), math.random(-200, 200), math.random(-200, 200))
+        ang.Parent = targetRoot
+        
+        -- BodyForce adicional (empurrão extra)
+        local bf = Instance.new("BodyForce")
+        bf.Force = direction * strength * 50 + Vector3.new(0, strength * 20, 0)
+        bf.Parent = targetRoot
+        
+        -- PlatformStand para desabilitar controle do jogador
+        targetHumanoid.PlatformStand = true
+        
+        -- Limpeza após 0.8 segundos
+        task.spawn(function()
+            task.wait(0.8)
+            pcall(function()
+                if bv then bv:Destroy() end
+                if ang then ang:Destroy() end
+                if bf then bf:Destroy() end
+                if targetHumanoid then targetHumanoid.PlatformStand = false end
+            end)
+        end)
+        
+        -- Força bruta no Velocity (método alternativo)
+        targetRoot.Velocity = direction * strength * 1.5 + Vector3.new(math.random(-200, 200), math.random(100, 400), math.random(-200, 200))
+    end
+    
     local function flingPlayers()
         if not flingEnabled or not player.Character then return end
+        
         local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot then return end
+        
         local myPosition = myRoot.Position
+        local myVelocity = myRoot.Velocity
+        
         for _, otherPlayer in pairs(game.Players:GetPlayers()) do
             if otherPlayer ~= player and otherPlayer.Character then
                 local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local otherHum = otherPlayer.Character:FindFirstChild("Humanoid")
-                if otherRoot and otherHum then
+                local otherHumanoid = otherPlayer.Character:FindFirstChild("Humanoid")
+                
+                if otherRoot and otherHumanoid and otherHumanoid.Health > 0 then
                     local distance = (myPosition - otherRoot.Position).Magnitude
-                    if distance < 50 then
-                        local flingForce = Instance.new("BodyVelocity")
-                        flingForce.MaxForce = Vector3.new(1, 1, 1) * math.huge; flingForce.P = math.huge
+                    
+                    -- Alcance de 60 studs
+                    if distance < 60 then
+                        -- Direção do fling (longe de mim + aleatório)
                         local direction = (otherRoot.Position - myPosition).Unit
-                        flingForce.Velocity = Vector3.new(direction.X * 50000 + math.random(-20000, 20000), 50000 + math.random(0, 30000), direction.Z * 50000 + math.random(-20000, 20000))
-                        flingForce.Parent = otherRoot; game:GetService("Debris"):AddItem(flingForce, 0.3)
-                        local flingSpin = Instance.new("BodyAngularVelocity")
-                        flingSpin.MaxTorque = Vector3.new(1, 1, 1) * math.huge
-                        flingSpin.AngularVelocity = Vector3.new(math.random(-100, 100), math.random(-100, 100), math.random(-100, 100))
-                        flingSpin.Parent = otherRoot; game:GetService("Debris"):AddItem(flingSpin, 0.3)
-                        otherHum.PlatformStand = true; task.wait(0.5); pcall(function() otherHum.PlatformStand = false end)
-                        otherRoot.Velocity = Vector3.new(direction.X * 500 + math.random(-200, 200), 500 + math.random(0, 300), direction.Z * 500 + math.random(-200, 200))
-                        pcall(function() otherRoot:SetNetworkOwner(nil) end)
+                        
+                        -- Força baseada na distância: quanto mais perto, mais forte
+                        local strength = 350 + (60 - math.min(distance, 60)) * 8
+                        strength = math.min(strength, 800) -- Cap máximo
+                        
+                        -- Adiciona meu momentum ao fling (se eu estiver me movendo)
+                        if myVelocity.Magnitude > 10 then
+                            strength = strength + myVelocity.Magnitude * 2
+                        end
+                        
+                        -- Aplica o fling
+                        applyFling(otherRoot, otherHumanoid, direction, strength)
+                        
+                        -- Tenta resetar network ownership pra garantir
+                        pcall(function()
+                            otherRoot:SetNetworkOwner(nil)
+                        end)
                     end
                 end
             end
         end
     end
+    
     flingConnection = RunService.Heartbeat:Connect(flingPlayers)
-    notify("Fling TURBINADO", "Ativado! Alcance: 50 studs", 3)
+    notify("Fling TURBINADO", "Ativado! Alcance: 60 studs", 3)
 end
 
 local function disableFling()
     flingEnabled = false
     if flingConnection then flingConnection:Disconnect(); flingConnection = nil end
+    
+    -- Limpa fling residual em todos os jogadores
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local otherHumanoid = otherPlayer.Character:FindFirstChild("Humanoid")
+            if otherRoot then
+                for _, v in pairs(otherRoot:GetChildren()) do
+                    if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyForce") then
+                        v:Destroy()
+                    end
+                end
+            end
+            if otherHumanoid then
+                otherHumanoid.PlatformStand = false
+            end
+        end
+    end
+    
     notify("Fling", "Desativado!", 2)
 end
 
@@ -241,6 +328,7 @@ local function destroyHub()
     if noFogEnabled then disableNoFog() end
     if flingEnabled then disableFling() end
     if espEnabled then disableESP() end
+    if touchESPEnabled then disableTouchESP() end
     if backgroundFrame then removeBackground() end
     pcall(function() Window:Destroy() end)
     local playerGui = player:FindFirstChild("PlayerGui")
@@ -276,10 +364,7 @@ local function disableNoFog()
 end
 
 local function loadF3X()
-    if f3xLoaded then
-        notify("F3X", "Ferramenta ja carregada!", 2)
-        return
-    end
+    if f3xLoaded then notify("F3X", "Ferramenta ja carregada!", 2) return end
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/ImFEARLESScheat/F3X/main/F3X.lua"))()
         f3xLoaded = true
@@ -292,7 +377,6 @@ local function createPart(partType)
     if not char then notify("Erro", "Personagem nao encontrado!", 2) return end
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then notify("Erro", "RootPart nao encontrada!", 2) return end
-    
     local part = Instance.new("Part")
     part.Position = root.Position + Vector3.new(0, 5, 0)
     part.Anchored = true
@@ -300,30 +384,13 @@ local function createPart(partType)
     part.BrickColor = BrickColor.random()
     part.Material = Enum.Material.SmoothPlastic
     part.Parent = workspace
-    
-    if partType == "Block" then
-        part.Size = Vector3.new(4, 2, 4)
-    elseif partType == "Sphere" then
-        part.Shape = Enum.PartType.Ball
-        part.Size = Vector3.new(4, 4, 4)
-    elseif partType == "Cylinder" then
-        part.Shape = Enum.PartType.Cylinder
-        part.Size = Vector3.new(4, 4, 4)
-    elseif partType == "Triangle" then
-        local mesh = Instance.new("SpecialMesh")
-        mesh.MeshType = Enum.MeshType.Wedge
-        mesh.Parent = part
-        part.Size = Vector3.new(4, 2, 4)
-    elseif partType == "CornerWedge" then
-        local mesh = Instance.new("SpecialMesh")
-        mesh.MeshType = Enum.MeshType.CornerWedge
-        mesh.Parent = part
-        part.Size = Vector3.new(4, 4, 4)
-    elseif partType == "Truss" then
-        part.Size = Vector3.new(4, 8, 4)
-        part.Material = Enum.Material.Metal
+    if partType == "Block" then part.Size = Vector3.new(4, 2, 4)
+    elseif partType == "Sphere" then part.Shape = Enum.PartType.Ball; part.Size = Vector3.new(4, 4, 4)
+    elseif partType == "Cylinder" then part.Shape = Enum.PartType.Cylinder; part.Size = Vector3.new(4, 4, 4)
+    elseif partType == "Triangle" then local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.Wedge; mesh.Parent = part; part.Size = Vector3.new(4, 2, 4)
+    elseif partType == "CornerWedge" then local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.CornerWedge; mesh.Parent = part; part.Size = Vector3.new(4, 4, 4)
+    elseif partType == "Truss" then part.Size = Vector3.new(4, 8, 4); part.Material = Enum.Material.Metal
     end
-    
     notify("Construcao", partType .. " criado!", 2)
 end
 
@@ -331,8 +398,7 @@ local function deleteAllBuilds()
     local count = 0
     for _, obj in pairs(workspace:GetChildren()) do
         if obj:IsA("Part") and obj.Anchored and obj.Parent == workspace and not obj:FindFirstChildOfClass("Humanoid") then
-            obj:Destroy()
-            count = count + 1
+            obj:Destroy(); count = count + 1
         end
     end
     notify("Construcao", count .. " pecas deletadas!", 2)
@@ -343,7 +409,7 @@ local function startFly()
     if not hum then notify("Erro", "Humanoid nao encontrado!", 2) return false end
     flying = true
     pcall(function()
-        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
     end)
     notify("Voo", "Ativado! Script de fly carregado", 2)
     return true
@@ -456,27 +522,262 @@ local function morphPlayer(targetPlayer)
     pcall(cloneCharacter); notify("Morph", "Transformado em: " .. targetPlayer.Name, 3)
 end
 
+-- ============================================
+-- ESP COM DETECÇÃO DE CLASSES E MM2
+-- ============================================
+local function getPlayerRole(plr)
+    local leaderstats = plr:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, stat in pairs(leaderstats:GetChildren()) do
+            local name = stat.Name:lower()
+            if name:find("class") or name:find("role") or name:find("team") or name:find("job") then
+                if stat:IsA("StringValue") then return stat.Value
+                elseif stat:IsA("IntValue") then return tostring(stat.Value) end
+            end
+        end
+        for _, stat in pairs(leaderstats:GetChildren()) do
+            if stat:IsA("StringValue") then return stat.Value end
+        end
+    end
+
+    if plr.Team then
+        local teamName = plr.Team.Name
+        local lower = teamName:lower()
+        if lower:find("murder") then return "🔪 Murderer"
+        elseif lower:find("sheriff") then return "🔫 Sheriff"
+        elseif lower:find("innocent") then return "👤 Innocent"
+        elseif lower:find("hero") then return "🦸 Hero"
+        else return teamName end
+    end
+
+    local char = plr.Character
+    if char then
+        for _, child in pairs(char:GetChildren()) do
+            if child:IsA("BoolValue") or child:IsA("StringValue") then
+                local name = child.Name:lower()
+                if name == "murderer" then return "🔪 Murderer"
+                elseif name == "sheriff" then return "🔫 Sheriff"
+                elseif name == "hero" then return "🦸 Hero"
+                elseif name == "innocent" then return "👤 Innocent" end
+            end
+        end
+        for _, folder in pairs(char:GetChildren()) do
+            if folder:IsA("Folder") or folder:IsA("Configuration") then
+                for _, item in pairs(folder:GetChildren()) do
+                    if item:IsA("BoolValue") or item:IsA("StringValue") then
+                        local name = item.Name:lower()
+                        if name == "murderer" then return "🔪 Murderer"
+                        elseif name == "sheriff" then return "🔫 Sheriff"
+                        elseif name == "hero" then return "🦸 Hero"
+                        elseif name == "innocent" then return "👤 Innocent" end
+                    end
+                end
+            end
+        end
+    end
+
+    local playerGui = plr:FindFirstChild("PlayerGui")
+    if playerGui then
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if gui:IsA("TextLabel") then
+                local text = gui.Text:lower()
+                if text:find("murderer") then return "🔪 Murderer"
+                elseif text:find("sheriff") then return "🔫 Sheriff"
+                elseif text:find("hero") then return "🦸 Hero"
+                elseif text:find("innocent") then return "👤 Innocent" end
+            end
+        end
+    end
+
+    return ""
+end
+
 local function enableESP()
     espEnabled = true
-    for _, existing in pairs(workspace:GetDescendants()) do if existing:IsA("BillboardGui") and existing.Name == "ESP_Gui" then existing:Destroy() end; if existing:IsA("Highlight") and existing.Name == "ESP_Highlight" then existing:Destroy() end end
-    local function createESP(model, name, color, isNPC)
-        if not model then return end; local head = model:FindFirstChild("Head")
-        if not head or not model:FindFirstChild("Humanoid") then return end
-        local highlight = Instance.new("Highlight"); highlight.Name = "ESP_Highlight"; highlight.FillColor = color; highlight.OutlineColor = Color3.fromRGB(255, 255, 255); highlight.FillTransparency = 0.7; highlight.OutlineTransparency = 0.3; highlight.Parent = model
-        local billboard = Instance.new("BillboardGui"); billboard.Name = "ESP_Gui"; billboard.Size = UDim2.new(0, 200, 0, 50); billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.AlwaysOnTop = true; billboard.Parent = head
-        local textLabel = Instance.new("TextLabel"); textLabel.Size = UDim2.new(1, 0, 1, 0); textLabel.BackgroundTransparency = 1; textLabel.TextColor3 = isNPC and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(255, 255, 255); textLabel.TextStrokeTransparency = 0; textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0); textLabel.TextSize = 14; textLabel.Font = Enum.Font.SourceSansBold; textLabel.Text = name; textLabel.Parent = billboard
+    for _, existing in pairs(workspace:GetDescendants()) do
+        if existing:IsA("BillboardGui") and existing.Name == "ESP_Gui" then existing:Destroy() end
+        if existing:IsA("Highlight") and existing.Name == "ESP_Highlight" then existing:Destroy() end
     end
-    for _, plr in pairs(game.Players:GetPlayers()) do if plr ~= player then if plr.Character then createESP(plr.Character, plr.Name, Color3.fromRGB(0, 255, 255), false) end; plr.CharacterAdded:Connect(function(char) if espEnabled then task.wait(0.5); createESP(char, plr.Name, Color3.fromRGB(0, 255, 255), false) end end) end end
-    for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not game.Players:GetPlayerFromCharacter(obj) then if obj.Humanoid.Health > 0 then createESP(obj, "[NPC] " .. obj.Name, Color3.fromRGB(255, 255, 0), true) end end end
-    notify("ESP", "Ativado!", 2)
+
+    local function createESP(model, plr, isNPC)
+        if not model then return end
+        local head = model:FindFirstChild("Head")
+        if not head or not model:FindFirstChild("Humanoid") then return end
+
+        local name = plr and plr.Name or model.Name
+        local role = ""
+        local color = Color3.fromRGB(0, 255, 255)
+
+        if plr and not isNPC then
+            role = getPlayerRole(plr)
+            if role:find("Murderer") then color = Color3.fromRGB(255, 0, 0)
+            elseif role:find("Sheriff") then color = Color3.fromRGB(0, 170, 255)
+            elseif role:find("Hero") then color = Color3.fromRGB(255, 215, 0)
+            elseif role:find("Innocent") then color = Color3.fromRGB(0, 255, 0) end
+        elseif isNPC then
+            color = Color3.fromRGB(255, 255, 0)
+        end
+
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.FillColor = color
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.7
+        highlight.OutlineTransparency = 0.3
+        highlight.Parent = model
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Gui"
+        billboard.Size = UDim2.new(0, 250, 0, 40)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.TextStrokeTransparency = 0
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        textLabel.TextSize = 13
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.Text = role ~= "" and (name .. " [" .. role .. "]") or name
+        if isNPC then textLabel.TextColor3 = Color3.fromRGB(255, 255, 0); textLabel.Text = "[NPC] " .. name end
+        textLabel.Parent = billboard
+
+        table.insert(espConnections, {model = model, highlight = highlight, billboard = billboard})
+    end
+
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player then
+            if plr.Character then createESP(plr.Character, plr, false) end
+            plr.CharacterAdded:Connect(function(char) if espEnabled then task.wait(0.5); createESP(char, plr, false) end end)
+        end
+    end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and not game.Players:GetPlayerFromCharacter(obj) then
+            if obj.Humanoid.Health > 0 then createESP(obj, nil, true) end
+        end
+    end
+
+    notify("ESP", "Ativado com roles do MM2!", 2)
 end
 
 local function disableESP()
     espEnabled = false
-    for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("BillboardGui") and obj.Name == "ESP_Gui" then obj:Destroy() end; if obj:IsA("Highlight") and obj.Name == "ESP_Highlight" then obj:Destroy() end end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BillboardGui") and obj.Name == "ESP_Gui" then obj:Destroy() end
+        if obj:IsA("Highlight") and obj.Name == "ESP_Highlight" then obj:Destroy() end
+    end
+    espConnections = {}
     notify("ESP", "Desativado!", 2)
 end
 
+-- ============================================
+-- TOUCHESP - DESTACAR ITENS COLETÁVEIS
+-- ============================================
+local function isPickupItem(part)
+    if not part:IsA("BasePart") then return false end
+    if part.Anchored then return false end
+    if not part.CanCollide then return false end
+    if part.Size.Magnitude > 10 then return false end
+    if part.Transparency >= 1 then return false end
+    local name = part.Name:lower()
+    if name:find("gun") or name:find("weapon") or name:find("knife") or name:find("item") or name:find("pickup") or name:find("hero") or name:find("collect") then
+        return true
+    end
+    if part:FindFirstChildOfClass("ClickDetector") then return true end
+    if part.Parent and part.Parent:IsA("Model") then
+        local model = part.Parent
+        if model:FindFirstChildOfClass("ClickDetector") then return true end
+        local modelName = model.Name:lower()
+        if modelName:find("gun") or modelName:find("weapon") or modelName:find("knife") then return true end
+    end
+    if part:FindFirstChildOfClass("BodyPosition") or part:FindFirstChildOfClass("BodyVelocity") then
+        return true
+    end
+    return false
+end
+
+local function highlightPickup(part)
+    if not part:IsA("BasePart") then return end
+    if part:FindFirstChild("TouchESP_Highlight") then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "TouchESP_Highlight"
+    highlight.FillColor = Color3.fromRGB(255, 255, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0.3
+    highlight.Parent = part
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "TouchESP_Gui"
+    billboard.Size = UDim2.new(0, 150, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = part
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Text = "📦 Item"
+    textLabel.Parent = billboard
+
+    table.insert(touchESPConnections, {part = part, highlight = highlight, billboard = billboard})
+end
+
+local function scanForPickups()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and isPickupItem(obj) then
+            highlightPickup(obj)
+        end
+    end
+end
+
+local function enableTouchESP()
+    touchESPEnabled = true
+    scanForPickups()
+
+    local newItemConn = workspace.DescendantAdded:Connect(function(obj)
+        if touchESPEnabled and obj:IsA("BasePart") then
+            task.wait(0.2)
+            if isPickupItem(obj) then
+                highlightPickup(obj)
+            end
+        end
+    end)
+    table.insert(touchESPConnections, newItemConn)
+
+    notify("TouchESP", "Itens coletaveis destacados!", 2)
+end
+
+local function disableTouchESP()
+    touchESPEnabled = false
+    for _, data in pairs(touchESPConnections) do
+        if type(data) == "table" then
+            if data.highlight then data.highlight:Destroy() end
+            if data.billboard then data.billboard:Destroy() end
+        elseif typeof(data) == "RBXScriptConnection" then
+            data:Disconnect()
+        end
+    end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Highlight") and obj.Name == "TouchESP_Highlight" then obj:Destroy() end
+        if obj:IsA("BillboardGui") and obj.Name == "TouchESP_Gui" then obj:Destroy() end
+    end
+    touchESPConnections = {}
+    notify("TouchESP", "Desativado!", 2)
+end
+
+-- ============================================
+-- UI ABAS
+-- ============================================
 local MainTab = Window:CreateTab("Principal", 4483362458)
 MainTab:CreateSlider({Name = "Velocidade", Range = {16, 200}, Increment = 1, Suffix = "studs/s", CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v) local h = getHumanoid() if h then h.WalkSpeed = v end end})
 MainTab:CreateSlider({Name = "Pulo", Range = {50, 300}, Increment = 1, Suffix = "power", CurrentValue = 50, Flag = "JumpPower", Callback = function(v) local h = getHumanoid() if h then h.JumpPower = v; h.UseJumpPower = true end end})
@@ -498,7 +799,6 @@ WorldTab:CreateToggle({Name = "NoFog", CurrentValue = false, Callback = function
 WorldTab:CreateSection("Construcao (F3X)")
 WorldTab:CreateButton({Name = "Abrir F3X Building Tools", Callback = function() loadF3X() end})
 WorldTab:CreateLabel("Pressione B para abrir/fechar o F3X")
-
 WorldTab:CreateSection("Criar Pecas Rapidas")
 WorldTab:CreateButton({Name = "Criar Bloco", Callback = function() createPart("Block") end})
 WorldTab:CreateButton({Name = "Criar Esfera", Callback = function() createPart("Sphere") end})
@@ -506,7 +806,6 @@ WorldTab:CreateButton({Name = "Criar Cilindro", Callback = function() createPart
 WorldTab:CreateButton({Name = "Criar Triangulo", Callback = function() createPart("Triangle") end})
 WorldTab:CreateButton({Name = "Criar Cunha de Canto", Callback = function() createPart("CornerWedge") end})
 WorldTab:CreateButton({Name = "Criar Trelica", Callback = function() createPart("Truss") end})
-
 WorldTab:CreateSection("Limpar")
 WorldTab:CreateButton({Name = "Deletar Todas Construcoes", Callback = function() deleteAllBuilds() end})
 
@@ -521,7 +820,14 @@ for _, tp in pairs(game.Players:GetPlayers()) do if tp ~= player then TrollTab:C
 game.Players.PlayerAdded:Connect(function(np) if np ~= player then TrollTab:CreateButton({Name = "Morph: " .. np.Name, Callback = function() morphPlayer(np) end}) end end)
 
 local ESPTab = Window:CreateTab("ESP", 4483362458)
-ESPTab:CreateToggle({Name = "ESP", CurrentValue = false, Callback = function(v) if v then enableESP() else disableESP() end end})
+ESPTab:CreateToggle({Name = "ESP com Classes e MM2", CurrentValue = false, Callback = function(v) if v then enableESP() else disableESP() end end})
+ESPTab:CreateLabel("Mostra nome e classe/role dos jogadores")
+ESPTab:CreateLabel("Detecta Sheriff, Murderer, Inocent, Hero")
+ESPTab:CreateLabel("Cores: 🔪Vermelho 🔫Azul 🦸Dourado 👤Verde")
+
+ESPTab:CreateToggle({Name = "TouchESP (Itens)", CurrentValue = false, Callback = function(v) if v then enableTouchESP() else disableTouchESP() end end})
+ESPTab:CreateLabel("Destaca armas, itens e coletaveis")
+ESPTab:CreateLabel("Funciona no Murder Mystery 2 e outros")
 
 local VisualTab = Window:CreateTab("Visual", 4483362458)
 VisualTab:CreateToggle({Name = "Invisivel", CurrentValue = false, Callback = function(v) if v then enableInvisible() else disableInvisible() end end})
@@ -536,7 +842,7 @@ end})
 local ConfigTab = Window:CreateTab("Config", 4483362458)
 ConfigTab:CreateSection("Background")
 ConfigTab:CreateInput({Name = "Link da Imagem", PlaceholderText = "URL ou ID do Roblox...", RemoveTextAfterFocusLost = false, Callback = function(text) if text and text ~= "" then changeBackground(text) end end})
-ConfigTab:CreateButton({Name = "Remover Fundo", Callback = function() removeBackground() end})
+ConfigTab:CreateButton({Name = "Remyover Fundo", Callback = function() removeBackground() end})
 ConfigTab:CreateSection("Sistema")
 ConfigTab:CreateButton({Name = "Destruir Hub", Callback = function() destroyHub() end})
 
@@ -546,6 +852,7 @@ game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
     if flying then stopFly() end
     if flingEnabled then disableFling() end
     if espEnabled then disableESP() end
+    if touchESPEnabled then disableTouchESP() end
     if cameraNoclipEnabled then disableCameraNoclip() end
     if infiniteCameraEnabled then disableInfiniteCamera() end
 end)
